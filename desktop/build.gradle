@@ -1,0 +1,48 @@
+archivesBaseName = appName
+
+ext {
+    mainClassName = "de.doccrazy.ld35.desktop.DesktopLauncher"
+    assetsDir = file("../core/assets");
+    assetsSrcDir = file("../core/assets_src");
+}
+
+apply from: file('../packTextures.gradle')
+
+task run(dependsOn: classes, type: JavaExec) {
+    main = mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    workingDir = assetsDir
+    ignoreExitValue = true
+    enableAssertions = true
+}
+
+jar {
+    from assetsDir
+}
+task dist(type: Jar) {
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+
+    from {configurations.compile.collect {zipTree(it)}}
+    with jar
+}
+
+eclipse {
+    project {
+        name = appName + "-desktop"
+        linkedResource name: 'assets', type: '2', location: 'PARENT-1-PROJECT_LOC/core/assets'
+    }
+}
+
+task afterEclipseImport(description: "Post processing after project generation", group: "IDE") {
+  doLast {
+    def classpath = new XmlParser().parse(file(".classpath"))
+    new Node(classpath, "classpathentry", [ kind: 'src', path: 'assets' ]);
+    def writer = new FileWriter(file(".classpath"))
+    def printer = new XmlNodePrinter(new PrintWriter(writer))
+    printer.setPreserveWhitespace(true)
+    printer.print(classpath)
+  }
+}

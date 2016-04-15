@@ -1,0 +1,6 @@
+include 'desktop', 'core'
+def ludumSharedVersion = new File(settingsDir, 'build.gradle').text.find(/ludumSharedVersion = '([^']+)'/) { full, v -> v}
+if (new File(settingsDir, '../ludum-shared').exists() && new File(settingsDir, '../ludum-shared/build.gradle').text.contains("version = '$ludumSharedVersion'")) {
+    include 'ludum-shared'
+    project(':ludum-shared').projectDir = new File(settingsDir, '../ludum-shared')
+}
