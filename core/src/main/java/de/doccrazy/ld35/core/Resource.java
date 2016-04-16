@@ -14,7 +14,7 @@ public class Resource {
 
     public static void init() {
         GFX = new GfxResources();
-        SPRITER = new SpriterResources(GFX.getAtlas());
+        //SPRITER = new SpriterResources(GFX.getAtlas());
         FONT = new FontResources();
         SOUND = new SoundResources();
         MUSIC = new MusicResources();

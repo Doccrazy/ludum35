@@ -17,8 +17,12 @@ import de.doccrazy.shared.game.world.ShapeBuilder;
 
 public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListener {
     private static final float RADIUS = 0.5f;
+    private static final float VELOCITY = 3f;
+    private static final float JUMP_IMPULSE = 50f;
 
     private MovementInputListener movement;
+    private boolean moving;
+    private float orientation = 1;
 
     public PlayerActor(GameWorld world, Vector2 spawn) {
         super(world, spawn, false);
@@ -33,8 +37,8 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
 
     @Override
     protected BodyBuilder createBody(Vector2 spawn) {
-        return BodyBuilder.forDynamic(spawn)
-                .fixShape(ShapeBuilder.circle(RADIUS)).fixSensor();
+        return BodyBuilder.forDynamic(spawn).damping(0.05f, 0.05f)
+                .fixShape(ShapeBuilder.circle(RADIUS)).fixProps(3f, 0.1f, 1f);
     }
 
     public void setupKeyboardControl() {
@@ -49,7 +53,35 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
     @Override
     protected void doAct(float delta) {
         super.doAct(delta);
+        if (movement != null) {
+            move(delta);
+        }
+    }
 
+    private void move(float delta) {
+        Vector2 mv = movement.getMovement();
+        moving = Math.abs(mv.x) > 0;
+        if (moving) {
+            orientation = Math.signum(mv.x);
+        }
+
+        body.applyTorque(-mv.x*VELOCITY, true);
+        if (moving) {
+            //if (touchingFloor()) {
+                //body.setAngularVelocity(-mv.x*VELOCITY);
+            /*} else {
+                body.applyForceToCenter(mv.x * AIR_CONTROL, 0f, true);
+            }*/
+        }
+        if (movement.pollJump()) {
+            addImpulse(0f, JUMP_IMPULSE);
+            //Resource.jump.play();
+        }
+    }
+
+    private void addImpulse(float impulseX, float impulseY) {
+        body.applyLinearImpulse(impulseX, impulseY, body.getPosition().x, body.getPosition().y, true);
+        //floorContacts.clear();
     }
 
     @Override

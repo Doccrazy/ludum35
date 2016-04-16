@@ -25,12 +25,12 @@ public class IntroScreen extends Widget {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         super.draw(batch, parentAlpha);
-        batch.draw(Resource.GFX.introFull, getX(), getY(), getWidth(), getHeight());
+        /*batch.draw(Resource.GFX.introFull, getX(), getY(), getWidth(), getHeight());
         if (stateTime >= 1f) {
             float scale = Interpolation.bounceOut.apply(6f, 1f, Math.max(stateTime - 1f, 0));
             batch.draw(Resource.GFX.introSplash, getX() + 300, getY() + 120,
                     Resource.GFX.introSplash.getRegionWidth() / 2f, Resource.GFX.introSplash.getRegionHeight() / 2f,
                     Resource.GFX.introSplash.getRegionWidth(), Resource.GFX.introSplash.getRegionHeight(), scale, scale, 0);
-        }
+        }*/
     }
 }

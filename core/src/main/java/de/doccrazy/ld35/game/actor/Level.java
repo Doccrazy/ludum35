@@ -24,7 +24,7 @@ public abstract class Level extends Box2dActor<GameWorld> {
 
     public abstract Rectangle getBoundingBox();
 
-    public abstract Rectangle getGrassBox();
+    public abstract Rectangle getViewportBox();
 
     public abstract Vector2 getSpawn();
 
@@ -36,19 +36,19 @@ public abstract class Level extends Box2dActor<GameWorld> {
      * Gets a random point <b>inside</b> the level (i.e. the playable area)
      * @param avoidPlayer true to keep some distance away from the player character
      */
-    public Vector2 getRandomPoint(boolean avoidPlayer) {
+    /*public Vector2 getRandomPoint(boolean avoidPlayer) {
         Vector2 spawn;
         do {
             spawn = new Vector2(MathUtils.random(getGrassBox().getX(), getGrassBox().getWidth() + getGrassBox().getX()),
                     MathUtils.random(getGrassBox().getY(), getGrassBox().getHeight() + getGrassBox().getY()));
         } while (excluded(spawn) || (avoidPlayer && spawn.dst(getSpawn()) < 2f));
         return spawn;
-    }
+    }*/
 
     /**
      * Gets a random points <b>on the level borders</b>, i.e. outside the playable area
      */
-    public Vector2 getRandomBorderPoint() {
+    /*public Vector2 getRandomBorderPoint() {
         Vector2 spawn;
         do {
             spawn = new Vector2(MathUtils.random(getBoundingBox().getX(), getBoundingBox().getWidth() + getBoundingBox().getX()),
@@ -63,6 +63,6 @@ public abstract class Level extends Box2dActor<GameWorld> {
 
     protected void spawnRandomObject(BiFunction<GameWorld, Vector2, WorldActor<GameWorld>> factory, boolean avoidPlayer) {
         world.addActor(factory.apply(world, getRandomPoint(avoidPlayer)));
-    }
+    }*/
 
 }

@@ -31,13 +31,13 @@ public class NextLevelScreen extends Widget {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         super.draw(batch, parentAlpha);
-        batch.draw(Resource.GFX.intermezzo, getX(), getY(), getWidth(), getHeight());
+        /*batch.draw(Resource.GFX.intermezzo, getX(), getY(), getWidth(), getHeight());
         TextureRegion sprite = uiRoot.getWorld().isGameOver() ? Resource.GFX.thanksTx : Resource.GFX.continueTx;
         if (stateTime >= 1f) {
             float scale = Interpolation.bounceOut.apply(6f, 1f, Math.max(stateTime - 1f, 0));
             batch.draw(sprite, getX() + 200, getY() + 40,
                     sprite.getRegionWidth() / 2f, sprite.getRegionHeight() / 2f,
                     sprite.getRegionWidth(), sprite.getRegionHeight(), scale, scale, 0);
-        }
+        }*/
     }
 }

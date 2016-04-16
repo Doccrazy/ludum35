@@ -48,8 +48,8 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
         shakeAmount = shakeAmount * 0.91f;
         world.pollEvents(ScreenShakeEvent.class, screenShakeEvent -> shakeAmount += 0.1f);
 
-	    gameViewport.x = world.getLevel().getBoundingBox().width;
-	    gameViewport.y = world.getLevel().getBoundingBox().height;
+	    gameViewport.x = world.getLevel().getViewportBox().width;
+	    gameViewport.y = world.getLevel().getViewportBox().height;
 	    //zoom = MathUtils.clamp(zoom + zoomDelta*0.02f, 1f, 2f);
 
         camera.position.x = gameViewport.x / 2 + MathUtils.random(-shakeAmount, shakeAmount);
