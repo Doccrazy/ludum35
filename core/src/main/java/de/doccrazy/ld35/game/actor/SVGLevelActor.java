@@ -1,5 +1,6 @@
 package de.doccrazy.ld35.game.actor;
 
+import box2dLight.ConeLight;
 import box2dLight.PointLight;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
@@ -7,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.ParticleEffectPool;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Circle;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -22,7 +24,6 @@ import org.apache.batik.parser.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -92,6 +93,11 @@ public class SVGLevelActor extends Level {
         });
         processCircleByPrefix(metaLayer, metaTransform, "light", (s, circle, color) -> {
             PointLight light = new PointLight(world.rayHandler, 10, color, circle.radius*2f, circle.x, circle.y);
+            light.setXray(true);
+            lights.add(light);
+        });
+        processArcByPrefix(metaLayer, metaTransform, "conelight", (s, arc, color) -> {
+            ConeLight light = new ConeLight(world.rayHandler, 10, color, arc.r*7f, arc.x, arc.y, MathUtils.radDeg * (arc.a2 + arc.a1)/2f, MathUtils.radDeg * Math.abs(arc.a2 - arc.a1)/2f);
             light.setXray(true);
             lights.add(light);
         });
@@ -178,28 +184,41 @@ public class SVGLevelActor extends Level {
     private void processCircleByPrefix(XmlReader.Element layer, AffineTransform currentTransform, String prefix, TriConsumer<String, Circle, Color> consumer) {
         for (XmlReader.Element element : childrenByPrefix(layer, "circle", prefix)) {
             Circle circle = parseCircle(element, currentTransform);
-            String[] style = element.getAttribute("style").split(";");
-            Color color = new Color();
-            for (String s : style) {
-                if (s.startsWith("fill:#")) {
-                    color.set(Color.valueOf(s.substring("fill:#".length())));
-                } else if (s.startsWith("fill-opacity:")) {
-                    color.set(color.r, color.g, color.b, Float.parseFloat(s.substring("fill-opacity:".length())));
-                }
-            }
+            Color color = colorFromStyle(element);
             String objectName = element.getAttribute(ATTR_LABEL).substring(prefix.length());
             consumer.accept(objectName, circle, color);
         }
     }
 
+    private void processArcByPrefix(XmlReader.Element layer, AffineTransform currentTransform, String prefix, TriConsumer<String, Arc, Color> consumer) {
+        for (XmlReader.Element element : childrenByPrefix(layer, "path", prefix)) {
+            Arc arc = parseArc(element, currentTransform);
+            Color color = colorFromStyle(element);
+            String objectName = element.getAttribute(ATTR_LABEL).substring(prefix.length());
+            consumer.accept(objectName, arc, color);
+        }
+    }
+
+    private Color colorFromStyle(XmlReader.Element element) {
+        String[] style = element.getAttribute("style").split(";");
+        Color color = new Color();
+        for (String s : style) {
+            if (s.startsWith("fill:#")) {
+                color.set(Color.valueOf(s.substring("fill:#".length())));
+            } else if (s.startsWith("fill-opacity:")) {
+                color.set(color.r, color.g, color.b, Float.parseFloat(s.substring("fill-opacity:".length())));
+            }
+        }
+        return color;
+    }
+
     private Rectangle parseRect(XmlReader.Element rect, AffineTransform currentTransform) {
         AffineTransform rectTransform = createTransform(rect);
+        rectTransform.preConcatenate(currentTransform);
         Vector2 p1 = new Vector2(Float.parseFloat(rect.getAttribute("x")), Float.parseFloat(rect.getAttribute("y")));
         Vector2 p2 = new Vector2(p1.x + Float.parseFloat(rect.getAttribute("width")), p1.y + Float.parseFloat(rect.getAttribute("height")));
         applyTransform(rectTransform, p1);
         applyTransform(rectTransform, p2);
-        applyTransform(currentTransform, p1);
-        applyTransform(currentTransform, p2);
         float tmp;
         if (p1.x > p2.x) { tmp = p1.x; p1.x = p2.x; p2.x = tmp; }
         if (p1.y > p2.y) { tmp = p1.y; p1.y = p2.y; p2.y = tmp; }
@@ -208,13 +227,33 @@ public class SVGLevelActor extends Level {
 
     private Circle parseCircle(XmlReader.Element circle, AffineTransform currentTransform) {
         AffineTransform circleTransform = createTransform(circle);
+        circleTransform.preConcatenate(currentTransform);
         Vector2 c = new Vector2(Float.parseFloat(circle.getAttribute("cx")), Float.parseFloat(circle.getAttribute("cy")));
         float r = Float.parseFloat(circle.getAttribute("r"));
         applyTransform(circleTransform, c);
-        applyTransform(currentTransform, c);
         r = applyDeltaTransform(circleTransform, r);
-        r = applyDeltaTransform(currentTransform, r);
-        return new Circle(c, r);
+        return new Circle(c, Math.abs(r));
+    }
+
+    private Arc parseArc(XmlReader.Element arc, AffineTransform currentTransform) {
+        AffineTransform arcTransform = createTransform(arc);
+        arcTransform.preConcatenate(currentTransform);
+        Vector2 c = new Vector2(Float.parseFloat(arc.getAttribute("sodipodi:cx")), Float.parseFloat(arc.getAttribute("sodipodi:cy")));
+        float r = Float.parseFloat(arc.getAttribute("sodipodi:rx"));
+        float a1 = Float.parseFloat(arc.getAttribute("sodipodi:start"));
+        float a2 = Float.parseFloat(arc.getAttribute("sodipodi:end"));
+        applyTransform(arcTransform, c);
+        r = applyDeltaTransform(arcTransform, r);
+        Vector2 vMirror = applyDeltaTransform(arcTransform, new Vector2(1, 1));
+        if (vMirror.x < 0) {
+            a1 = (float) (Math.PI - a1);
+            a2 = (float) (Math.PI - a2);
+        }
+        if (vMirror.y < 0) {
+            a1 = -a1;
+            a2 = -a2;
+        }
+        return new Arc(c.x, c.y, Math.abs(r), a1, a2);
     }
 
     private void applyTransform(AffineTransform transform, Vector2 v) {
@@ -225,6 +264,11 @@ public class SVGLevelActor extends Level {
     private float applyDeltaTransform(AffineTransform transform, float l) {
         Point2D tp = transform.deltaTransform(new Point2D.Float(l, 0), new Point2D.Float());
         return (float) tp.getX();
+    }
+
+    private Vector2 applyDeltaTransform(AffineTransform transform, Vector2 v) {
+        Point2D tp = transform.deltaTransform(new Point2D.Float(v.x, v.y), new Point2D.Float());
+        return new Vector2((float) tp.getX(), (float) tp.getY());
     }
 
     private boolean hasAttribute(XmlReader.Element element, String attribute) {
@@ -288,5 +332,19 @@ public class SVGLevelActor extends Level {
             p.free();
         }
         super.doRemove();
+    }
+}
+
+class Arc {
+    public float x, y;
+    public float r;
+    public float a1, a2;
+
+    public Arc(float x, float y, float r, float a1, float a2) {
+        this.x = x;
+        this.y = y;
+        this.r = r;
+        this.a1 = a1;
+        this.a2 = a2;
     }
 }

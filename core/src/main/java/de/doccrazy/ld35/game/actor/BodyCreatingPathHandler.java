@@ -2,6 +2,7 @@ package de.doccrazy.ld35.game.actor;
 
 import com.badlogic.gdx.math.Bezier;
 import com.badlogic.gdx.math.EarClippingTriangulator;
+import com.badlogic.gdx.math.GeometryUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import de.doccrazy.shared.game.base.PolyRenderer;
@@ -18,9 +19,10 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     private static final float SUBDIVS = 20f;
 
     private final AffineTransform transform;
-    private Vector2 location, startPoint;
+    private Vector2 location, origin, startPoint;
     private List<Vector2> polyPoints;
     private BodyBuilder bodyBuilder;
+    private boolean initial;
 
     public BodyCreatingPathHandler(AffineTransform transform) {
         this.transform = transform;
@@ -44,26 +46,6 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     @Override
     public void endPath() throws ParseException {
         System.out.println("end");
-        Point2D.Float pOut = new Point2D.Float();
-        for (Vector2 p : polyPoints) {
-            transform.transform(new Point2D.Float(p.x, p.y), pOut);
-            p.x = pOut.x;
-            p.y = pOut.y;
-        }
-        Vector2 pos = polyPoints.get(0).cpy();
-        System.out.println("Position: " + pos);
-        for (Vector2 p : polyPoints) {
-            p.x = p.x - pos.x;
-            p.y = p.y - pos.y;
-        }
-        bodyBuilder = BodyBuilder.forStatic(pos);
-        List<PolygonShape> shapes = PolyRenderer.createPolyShape(polyPoints);
-        for (int i = 0; i < shapes.size(); i++) {
-            if (i > 0) {
-                bodyBuilder.newFixture();
-            }
-            bodyBuilder.fixShape(shapes.get(i));
-        }
     }
 
     @Override
@@ -73,14 +55,34 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
                 && Math.abs(polyPoints.get(polyPoints.size()-1).y - startPoint.y) > 0.001f) {
             polyPoints.add(startPoint);
         }
+        System.out.println("Position: " + origin);
+        for (Vector2 p : polyPoints) {
+            p.x = p.x - origin.x;
+            p.y = p.y - origin.y;
+        }
+        List<PolygonShape> shapes = PolyRenderer.createPolyShape(polyPoints);
+        for (int i = 0; i < shapes.size(); i++) {
+            if (!initial) {
+                bodyBuilder.newFixture();
+            }
+            initial = false;
+            bodyBuilder.fixShape(shapes.get(i));
+        }
+        polyPoints.clear();
+        startPoint = null;
     }
 
     @Override
     public void movetoRel(float x, float y) throws ParseException {
-        if (startPoint == null) {
-            startPoint = new Vector2(x, y);
-        }
         location.set(location.x + x, location.y + y);
+        if (startPoint == null) {
+            startPoint = transform(location);
+        }
+        if (bodyBuilder == null) {
+            origin = transform(location);
+            bodyBuilder = BodyBuilder.forStatic(origin);
+            initial = true;
+        }
         //polyPoints.add(new Vector2(x, y));
         System.out.println("movetoRel(" + x + ", " + y + ")");
     }
@@ -88,6 +90,14 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     @Override
     public void movetoAbs(float x, float y) throws ParseException {
         location.set(x, y);
+        if (startPoint == null) {
+            startPoint = transform(location);
+        }
+        if (bodyBuilder == null) {
+            origin = transform(location);
+            bodyBuilder = BodyBuilder.forStatic(origin);
+            initial = true;
+        }
         System.out.println("movetoAbs(" + x + ", " + y + ")");
     }
 
@@ -95,12 +105,14 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     public void linetoRel(float x, float y) throws ParseException {
         System.out.println("linetoRel(" + x + ", " + y + ")");
         location.set(location.x + x, location.y + y);
-        polyPoints.add(new Vector2(location.x, location.y));
+        polyPoints.add(transform(location));
     }
 
     @Override
     public void linetoAbs(float x, float y) throws ParseException {
         System.out.println("linetoAbs(" + x + ", " + y + ")");
+        location.set(x, y);
+        polyPoints.add(transform(location));
     }
 
     @Override
@@ -119,12 +131,21 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
         Vector2 p1 = new Vector2(rel.x + x1, rel.y + y1);
         Vector2 p2 = new Vector2(rel.x + x2, rel.y + y2);
         Vector2 pEnd = new Vector2(rel.x + x, rel.y + y);
+        float len = pEnd.dst(location) + location.dst(p1) + pEnd.dst(p2);
         Vector2 out = new Vector2();
         Vector2 tmp = new Vector2();
-        for (int i = 1; i <= SUBDIVS; i++) {
-            Bezier.cubic(out, i/SUBDIVS, location, p1, p2, pEnd, tmp);
-            polyPoints.add(out.cpy());
+        float sd = (int) (SUBDIVS * (len/100f));
+        //System.out.println("subdivs " + sd);
+        for (int i = 1; i <= sd; i++) {
+            Bezier.cubic(out, i/sd, location, p1, p2, pEnd, tmp);
+            polyPoints.add(transform(out));
         }
         location.set(pEnd.x, pEnd.y);
+    }
+
+    private Vector2 transform(Vector2 org) {
+        Point2D.Float pOut = new Point2D.Float();
+        transform.transform(new Point2D.Float(org.x, org.y), pOut);
+        return new Vector2(pOut.x, pOut.y);
     }
 }

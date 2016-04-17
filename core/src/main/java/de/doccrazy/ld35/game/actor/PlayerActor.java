@@ -28,11 +28,12 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
     private static final float CONTACT_TTL = 0.2f;
     private static final float RADIUS = 0.5f;
     private static final float VELOCITY = 5f;
-    private static final float TORQUE = 3f;
+    private static final float TORQUE = 2f;
     private static final float JUMP_IMPULSE = 4f;
     private static final float AIR_CONTROL = 3f;
     public static final float V_MAX_AIRCONTROL = 2.5f;
     public static final float V_MAX_GLIDE_DROP = -2f;
+    public static final float V_MAX_ROLL = 40f;
     public static final float GLIDE_V_SCALE = 0.01f;
 
     private MovementInputListener movement;
@@ -100,7 +101,7 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
             case 1:
                 body.getFixtureList().get(0).getShape().setRadius(RADIUS);
                 body.resetMassData();
-                body.getFixtureList().get(0).setRestitution(0.3f);
+                body.getFixtureList().get(0).setRestitution(0.1f);
                 body.setLinearDamping(0.05f);
                 body.setAngularDamping(0.05f);
                 body.setFixedRotation(false);
@@ -211,7 +212,9 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
             }
 
         } else if (shapeState == 1) {
-            body.applyTorque(-mv.x*TORQUE, true);
+            if (Math.abs(body.getAngularVelocity()) < V_MAX_ROLL) {
+                body.applyTorque(-mv.x * TORQUE, true);
+            }
             if (Math.abs(v.x) < 0.1f) {
                 body.setAngularVelocity(-mv.x*VELOCITY*0.5f);
             }
@@ -219,7 +222,7 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
             if (v.y < V_MAX_GLIDE_DROP) {
                 body.setLinearVelocity(v.x, V_MAX_GLIDE_DROP);
             }
-            body.applyForceToCenter(0, mv.y * v.x * GLIDE_V_SCALE, true);
+            body.applyForceToCenter(0, mv.y * Math.abs(v.x) * GLIDE_V_SCALE, true);
         }
     }
 
