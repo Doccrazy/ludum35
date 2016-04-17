@@ -20,6 +20,7 @@ public class GfxResources extends ResourcesBase {
     public TextureRegion thanksTx = new TextureRegion(texture("thanks.png"));
     public TextureRegion defeat = new TextureRegion(texture("defeat.png"));*/
 
+    public Sprite[] player = new Sprite[]{atlas.createSprite("player_walk"), atlas.createSprite("player_roll"), atlas.createSprite("player_fly")};
     public Sprite[] blood = new Sprite[]{atlas.createSprite("blood1"), atlas.createSprite("blood2"), atlas.createSprite("blood3"), atlas.createSprite("blood4")};
 
     public Map<String, ParticleEffectPool> particles = new HashMap<String, ParticleEffectPool>() {{
@@ -28,7 +29,9 @@ public class GfxResources extends ResourcesBase {
     }};
 
     public XmlReader.Element level1 = xml("level.svg");
+    public XmlReader.Element level2 = xml("level2.svg");
     public TextureRegion level1Tex = new TextureRegion(textureFilter("level.png"));
+    public TextureRegion level2Tex = new TextureRegion(textureFilter("level2.png"));
 
     public GfxResources() {
         super("game.atlas");

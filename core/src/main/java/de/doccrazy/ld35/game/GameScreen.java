@@ -13,7 +13,7 @@ public class GameScreen extends BaseGameScreen<GameWorld, GameRenderer> {
 	@Override
 	protected GameWorld createWorld() {
 		//return new GameWorld(Level1Actor::new, Level2Actor::new);
-		return new GameWorld(w -> new SVGLevelActor(w, Resource.GFX.level1, Resource.GFX.level1Tex));
+		return new GameWorld(w -> new SVGLevelActor(w, Resource.GFX.level2, Resource.GFX.level2Tex));
 	}
 
 	@Override

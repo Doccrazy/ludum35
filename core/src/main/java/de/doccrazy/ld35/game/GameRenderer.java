@@ -34,7 +34,7 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
 
     @Override
     protected void init() {
-        world.rayHandler.setAmbientLight(new Color(0.6f, 0.6f, 0.6f, 1f));
+        world.rayHandler.setAmbientLight(new Color(0.5f, 0.5f, 0.5f, 1f));
     }
 
     @Override
@@ -53,11 +53,11 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
 
 	    //zoom = MathUtils.clamp(zoom + zoomDelta*0.02f, 1f, 2f);
 
-		Vector2 cameraCenter = GeometryUtils.keepWithin(new Vector2(world.getPlayer().getX() - GameRules.LEVEL_WIDTH/2, world.getPlayer().getY() - GameRules.LEVEL_HEIGHT/2),
+		Vector2 cameraCenter = GeometryUtils.keepWithin(new Vector2(world.getPlayer().getX() - GameRules.LEVEL_WIDTH/2f, world.getPlayer().getY() - GameRules.LEVEL_HEIGHT/2f),
 				GameRules.LEVEL_WIDTH, GameRules.LEVEL_HEIGHT,
 				0, 0, world.getLevel().getBoundingBox().width, world.getLevel().getBoundingBox().height);
-		camera.position.x = cameraCenter.x + GameRules.LEVEL_WIDTH/2 + MathUtils.random(-shakeAmount, shakeAmount);
-        camera.position.y = cameraCenter.y + GameRules.LEVEL_HEIGHT/2 + MathUtils.random(-shakeAmount, shakeAmount);
+		camera.position.x = cameraCenter.x + GameRules.LEVEL_WIDTH/2f + MathUtils.random(-shakeAmount, shakeAmount);
+        camera.position.y = cameraCenter.y + GameRules.LEVEL_HEIGHT/2f + MathUtils.random(-shakeAmount, shakeAmount);
 
         /*if (animateCamera) {
             camY -= Gdx.graphics.getDeltaTime() * CAM_PPS;

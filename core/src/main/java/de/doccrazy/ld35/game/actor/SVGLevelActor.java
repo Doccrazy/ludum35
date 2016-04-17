@@ -1,11 +1,15 @@
 package de.doccrazy.ld35.game.actor;
 
+import box2dLight.PointLight;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.ParticleEffectPool;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Circle;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.XmlReader;
 import de.doccrazy.ld35.core.Resource;
@@ -30,11 +34,12 @@ public class SVGLevelActor extends Level {
     public static final String ATTR_LABEL = "inkscape:label";
     public static final String LABEL_SCREEN = "screen";
     public static final String LABEL_SPAWN = "spawn";
-    public static final String PREFIX_PARTICLE = "part";
+    public static final String PREFIX_PARTICLE = "part:";
 
     private final Rectangle dimensions, cameraBounds;
     private final Vector2 spawn;
     private final TextureRegion levelTexture;
+    private final List<Body> bodies = new ArrayList<>();
     private final List<ParticleEffectPool.PooledEffect> particles = new ArrayList<>();
 
     public SVGLevelActor(GameWorld world, XmlReader.Element levelElement, TextureRegion levelTexture) {
@@ -76,11 +81,19 @@ public class SVGLevelActor extends Level {
         }
         spawn = parseRect(spawnRect, metaTransform).getCenter(new Vector2());
         cameraBounds = parseRect(childByLabel(metaLayer, "rect", LABEL_SCREEN), metaTransform);
-        processByPrefix(metaLayer, metaTransform, "rect", PREFIX_PARTICLE, (type, rect) -> {
+        processRectByPrefix(metaLayer, metaTransform, PREFIX_PARTICLE, (type, rect) -> {
             ParticleEffectPool.PooledEffect particle = Resource.GFX.particles.get(type).obtain();
             Vector2 center = rect.getCenter(new Vector2());
             particle.setPosition(center.x, center.y);
             particles.add(particle);
+        });
+        processRectByPrefix(metaLayer, metaTransform, "kill", (s, rect) -> {
+            world.addActor(new KillboxActor(world, rect));
+        });
+        processCircleByPrefix(metaLayer, metaTransform, "light", (s, circle, color) -> {
+            PointLight light = new PointLight(world.rayHandler, 10, color, circle.radius*2f, circle.x, circle.y);
+            light.setXray(true);
+            lights.add(light);
         });
     }
 
@@ -89,20 +102,23 @@ public class SVGLevelActor extends Level {
         groupTransform.preConcatenate(currentTransform);
 
         PathParser parser = new PathParser();
-        BodyCreatingPathHandler handler = new BodyCreatingPathHandler(groupTransform);
-        parser.setPathHandler(handler);
         for (XmlReader.Element path : group.getChildrenByName("path")) {
+            AffineTransform pathTransform = createTransform(path);
+            pathTransform.preConcatenate(groupTransform);
+            BodyCreatingPathHandler handler = new BodyCreatingPathHandler(pathTransform);
+            parser.setPathHandler(handler);
+
             parser.parse(path.getAttribute("d"));
             BodyBuilder builder = handler.getBodyBuilder();
             applyPhysicsProps(path, builder);
-            builder.build(world);
+            bodies.add(builder.build(world));
         }
         for (XmlReader.Element rect : group.getChildrenByName("rect")) {
             Rectangle parsed = parseRect(rect, groupTransform);
             BodyBuilder builder = BodyBuilder.forStatic(parsed.getPosition(new Vector2()))
                     .fixShape(ShapeBuilder.boxAbs(parsed.getWidth(), parsed.getHeight()));
             applyPhysicsProps(rect, builder);
-            builder.build(world);
+            bodies.add(builder.build(world));
         }
         for (XmlReader.Element subgroup : group.getChildrenByName("g")) {
             parseGroup(subgroup, groupTransform);
@@ -147,15 +163,32 @@ public class SVGLevelActor extends Level {
 
     private List<XmlReader.Element> childrenByPrefix(XmlReader.Element layer, String type, String prefix) {
         return StreamSupport.stream(layer.getChildrenByName(type).spliterator(), false)
-                .filter(e -> hasAttribute(e, ATTR_LABEL) && e.getAttribute(ATTR_LABEL).startsWith(prefix + ":"))
+                .filter(e -> hasAttribute(e, ATTR_LABEL) && e.getAttribute(ATTR_LABEL).startsWith(prefix))
                 .collect(Collectors.toList());
     }
 
-    private void processByPrefix(XmlReader.Element layer, AffineTransform currentTransform, String type, String prefix, BiConsumer<String, Rectangle> consumer) {
-        for (XmlReader.Element element : childrenByPrefix(layer, type, prefix)) {
+    private void processRectByPrefix(XmlReader.Element layer, AffineTransform currentTransform, String prefix, BiConsumer<String, Rectangle> consumer) {
+        for (XmlReader.Element element : childrenByPrefix(layer, "rect", prefix)) {
             Rectangle rect = parseRect(element, currentTransform);
-            String objectName = element.getAttribute(ATTR_LABEL).substring(prefix.length() + 1);
+            String objectName = element.getAttribute(ATTR_LABEL).substring(prefix.length());
             consumer.accept(objectName, rect);
+        }
+    }
+
+    private void processCircleByPrefix(XmlReader.Element layer, AffineTransform currentTransform, String prefix, TriConsumer<String, Circle, Color> consumer) {
+        for (XmlReader.Element element : childrenByPrefix(layer, "circle", prefix)) {
+            Circle circle = parseCircle(element, currentTransform);
+            String[] style = element.getAttribute("style").split(";");
+            Color color = new Color();
+            for (String s : style) {
+                if (s.startsWith("fill:#")) {
+                    color.set(Color.valueOf(s.substring("fill:#".length())));
+                } else if (s.startsWith("fill-opacity:")) {
+                    color.set(color.r, color.g, color.b, Float.parseFloat(s.substring("fill-opacity:".length())));
+                }
+            }
+            String objectName = element.getAttribute(ATTR_LABEL).substring(prefix.length());
+            consumer.accept(objectName, circle, color);
         }
     }
 
@@ -173,9 +206,25 @@ public class SVGLevelActor extends Level {
         return new Rectangle(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
     }
 
+    private Circle parseCircle(XmlReader.Element circle, AffineTransform currentTransform) {
+        AffineTransform circleTransform = createTransform(circle);
+        Vector2 c = new Vector2(Float.parseFloat(circle.getAttribute("cx")), Float.parseFloat(circle.getAttribute("cy")));
+        float r = Float.parseFloat(circle.getAttribute("r"));
+        applyTransform(circleTransform, c);
+        applyTransform(currentTransform, c);
+        r = applyDeltaTransform(circleTransform, r);
+        r = applyDeltaTransform(currentTransform, r);
+        return new Circle(c, r);
+    }
+
     private void applyTransform(AffineTransform transform, Vector2 v) {
         Point2D tp = transform.transform(new Point2D.Float(v.x, v.y), new Point2D.Float());
         v.set((float)tp.getX(), (float)tp.getY());
+    }
+
+    private float applyDeltaTransform(AffineTransform transform, float l) {
+        Point2D tp = transform.deltaTransform(new Point2D.Float(l, 0), new Point2D.Float());
+        return (float) tp.getX();
     }
 
     private boolean hasAttribute(XmlReader.Element element, String attribute) {
@@ -230,4 +279,14 @@ public class SVGLevelActor extends Level {
         effect.draw(batch);
     }
 
+    @Override
+    protected void doRemove() {
+        for (Body b : bodies) {
+            world.box2dWorld.destroyBody(b);
+        }
+        for (ParticleEffectPool.PooledEffect p : particles) {
+            p.free();
+        }
+        super.doRemove();
+    }
 }
