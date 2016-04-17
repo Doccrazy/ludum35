@@ -1,10 +1,12 @@
 package de.doccrazy.ld35.game.actor;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.ParticleEffectPool;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.EarClippingTriangulator;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.XmlReader;
 import de.doccrazy.ld35.core.Resource;
 import de.doccrazy.ld35.data.GameRules;
@@ -15,21 +17,35 @@ import org.apache.batik.parser.*;
 
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class SVGLevelActor extends Level {
+    public static final String LAYER_PHYSICS = "Physics";
+    public static final String LAYER_META = "Meta";
+    public static final String ATTR_LABEL = "inkscape:label";
+    public static final String LABEL_SCREEN = "screen";
+    public static final String LABEL_SPAWN = "spawn";
+    public static final String PREFIX_PARTICLE = "part";
+
     private final Rectangle dimensions, cameraBounds;
     private final Vector2 spawn;
     private final TextureRegion levelTexture;
+    private final List<ParticleEffectPool.PooledEffect> particles = new ArrayList<>();
 
     public SVGLevelActor(GameWorld world, XmlReader.Element levelElement, TextureRegion levelTexture) {
         super(world);
         this.levelTexture = levelTexture;
 
-        XmlReader.Element physicsLayer = childByLabel(levelElement, "g", "Physics");
-        XmlReader.Element metaLayer = childByLabel(levelElement, "g", "Meta");
+        XmlReader.Element physicsLayer = childByLabel(levelElement, "g", LAYER_PHYSICS);
+        XmlReader.Element metaLayer = childByLabel(levelElement, "g", LAYER_META);
 
         //read "screen" meta rect to adjust level scale accordingly
-        XmlReader.Element cameraBoundsForScale = childByLabel(metaLayer, "rect", "screen");
+        XmlReader.Element cameraBoundsForScale = childByLabel(metaLayer, "rect", LABEL_SCREEN);
         if (cameraBoundsForScale == null) {
             throw new IllegalArgumentException("Please create a rect with label 'screen' on the Meta layer");
         }
@@ -54,12 +70,18 @@ public class SVGLevelActor extends Level {
         metaTransform.preConcatenate(viewMatrix);
 
         //read metadata
-        XmlReader.Element spawnRect = childByLabel(metaLayer, "rect", "spawn");
+        XmlReader.Element spawnRect = childByLabel(metaLayer, "rect", LABEL_SPAWN);
         if (spawnRect == null) {
             throw new IllegalArgumentException("Please create a rect with label 'spawn' on the Meta layer");
         }
         spawn = parseRect(spawnRect, metaTransform).getCenter(new Vector2());
-        cameraBounds = parseRect(childByLabel(metaLayer, "rect", "screen"), metaTransform);
+        cameraBounds = parseRect(childByLabel(metaLayer, "rect", LABEL_SCREEN), metaTransform);
+        processByPrefix(metaLayer, metaTransform, "rect", PREFIX_PARTICLE, (type, rect) -> {
+            ParticleEffectPool.PooledEffect particle = Resource.GFX.particles.get(type).obtain();
+            Vector2 center = rect.getCenter(new Vector2());
+            particle.setPosition(center.x, center.y);
+            particles.add(particle);
+        });
     }
 
     private void parseGroup(XmlReader.Element group, AffineTransform currentTransform) {
@@ -67,18 +89,35 @@ public class SVGLevelActor extends Level {
         groupTransform.preConcatenate(currentTransform);
 
         PathParser parser = new PathParser();
-        parser.setPathHandler(new BodyCreatingPathHandler(world, groupTransform));
+        BodyCreatingPathHandler handler = new BodyCreatingPathHandler(groupTransform);
+        parser.setPathHandler(handler);
         for (XmlReader.Element path : group.getChildrenByName("path")) {
             parser.parse(path.getAttribute("d"));
+            BodyBuilder builder = handler.getBodyBuilder();
+            applyPhysicsProps(path, builder);
+            builder.build(world);
         }
         for (XmlReader.Element rect : group.getChildrenByName("rect")) {
             Rectangle parsed = parseRect(rect, groupTransform);
-            BodyBuilder.forStatic(parsed.getPosition(new Vector2()))
-                    .fixShape(ShapeBuilder.boxAbs(parsed.getWidth(), parsed.getHeight()))
-                    .build(world);
+            BodyBuilder builder = BodyBuilder.forStatic(parsed.getPosition(new Vector2()))
+                    .fixShape(ShapeBuilder.boxAbs(parsed.getWidth(), parsed.getHeight()));
+            applyPhysicsProps(rect, builder);
+            builder.build(world);
         }
         for (XmlReader.Element subgroup : group.getChildrenByName("g")) {
             parseGroup(subgroup, groupTransform);
+        }
+    }
+
+    private void applyPhysicsProps(XmlReader.Element rect, BodyBuilder builder) {
+        try {
+            for (String desc : rect.get("desc").split(";")) {
+                if (desc.startsWith("fp:")) {
+                    String[] fp = desc.substring("fp:".length()).split(",");
+                    builder.fixProps(Float.parseFloat(fp[0]), Float.parseFloat(fp[1]), Float.parseFloat(fp[2]));
+                }
+            }
+        } catch (GdxRuntimeException ignore) {
         }
     }
 
@@ -99,11 +138,25 @@ public class SVGLevelActor extends Level {
 
     private XmlReader.Element childByLabel(XmlReader.Element layer, String type, String label) {
         for (XmlReader.Element element : layer.getChildrenByName(type)) {
-            if (label.equals(element.getAttribute("inkscape:label"))) {
+            if (label.equals(element.getAttribute(ATTR_LABEL))) {
                 return element;
             }
         }
         return null;
+    }
+
+    private List<XmlReader.Element> childrenByPrefix(XmlReader.Element layer, String type, String prefix) {
+        return StreamSupport.stream(layer.getChildrenByName(type).spliterator(), false)
+                .filter(e -> hasAttribute(e, ATTR_LABEL) && e.getAttribute(ATTR_LABEL).startsWith(prefix + ":"))
+                .collect(Collectors.toList());
+    }
+
+    private void processByPrefix(XmlReader.Element layer, AffineTransform currentTransform, String type, String prefix, BiConsumer<String, Rectangle> consumer) {
+        for (XmlReader.Element element : childrenByPrefix(layer, type, prefix)) {
+            Rectangle rect = parseRect(element, currentTransform);
+            String objectName = element.getAttribute(ATTR_LABEL).substring(prefix.length() + 1);
+            consumer.accept(objectName, rect);
+        }
     }
 
     private Rectangle parseRect(XmlReader.Element rect, AffineTransform currentTransform) {
@@ -123,6 +176,16 @@ public class SVGLevelActor extends Level {
     private void applyTransform(AffineTransform transform, Vector2 v) {
         Point2D tp = transform.transform(new Point2D.Float(v.x, v.y), new Point2D.Float());
         v.set((float)tp.getX(), (float)tp.getY());
+    }
+
+    private boolean hasAttribute(XmlReader.Element element, String attribute) {
+        String val;
+        try {
+            val = element.getAttribute(attribute);
+        } catch (GdxRuntimeException e) {
+            return false;
+        }
+        return val != null && val.length() > 0;
     }
 
     @Override
@@ -157,5 +220,14 @@ public class SVGLevelActor extends Level {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         batch.draw(levelTexture, 0, 0, dimensions.width, dimensions.height);
+        for (ParticleEffectPool.PooledEffect particle : particles) {
+            drawParticle(batch, particle);
+        }
     }
+
+    private void drawParticle(Batch batch, ParticleEffectPool.PooledEffect effect) {
+        effect.update(Gdx.graphics.getDeltaTime());
+        effect.draw(batch);
+    }
+
 }

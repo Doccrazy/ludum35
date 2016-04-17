@@ -5,15 +5,18 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Scaling;
 
 import box2dLight.ConeLight;
 import box2dLight.RayHandler;
+import de.doccrazy.ld35.data.GameRules;
 import de.doccrazy.ld35.game.actor.PlayerActor;
 import de.doccrazy.ld35.game.world.GameWorld;
 import de.doccrazy.ld35.game.world.ScreenShakeEvent;
 import de.doccrazy.shared.game.BaseGameRenderer;
+import net.dermetfan.gdx.math.GeometryUtils;
 
 public class GameRenderer extends BaseGameRenderer<GameWorld> {
 	private static final float CAM_PPS = 5f;
@@ -26,7 +29,7 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
 	private float shakeAmount = 0;
 
     public GameRenderer(GameWorld world) {
-        super(world, new Vector2(24f, 24f * 9f / 16f));
+        super(world, new Vector2(GameRules.LEVEL_WIDTH, GameRules.LEVEL_HEIGHT));
     }
 
     @Override
@@ -36,7 +39,7 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
 
     @Override
 	protected void drawBackground(SpriteBatch batch) {
-		Gdx.gl.glClearColor(1, 1, 1, 1);
+		Gdx.gl.glClearColor(0, 0.1f, 0.2f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         //Vector2 bgSize = bgScaling.apply(gameViewport.x, gameViewport.y, world.stage.getWidth(), world.stage.getHeight());
         //batch.draw(Resource.GFX.backgroundHigh, world.stage.getWidth() / 2 - bgSize.x / 2, 0, bgSize.x, bgSize.y);
@@ -48,12 +51,13 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
         shakeAmount = shakeAmount * 0.91f;
         world.pollEvents(ScreenShakeEvent.class, screenShakeEvent -> shakeAmount += 0.1f);
 
-	    gameViewport.x = world.getLevel().getViewportBox().width;
-	    gameViewport.y = world.getLevel().getViewportBox().height;
 	    //zoom = MathUtils.clamp(zoom + zoomDelta*0.02f, 1f, 2f);
 
-        camera.position.x = gameViewport.x / 2 + MathUtils.random(-shakeAmount, shakeAmount);
-        camera.position.y = gameViewport.y / 2 + MathUtils.random(-shakeAmount, shakeAmount);
+		Vector2 cameraCenter = GeometryUtils.keepWithin(new Vector2(world.getPlayer().getX() - GameRules.LEVEL_WIDTH/2, world.getPlayer().getY() - GameRules.LEVEL_HEIGHT/2),
+				GameRules.LEVEL_WIDTH, GameRules.LEVEL_HEIGHT,
+				0, 0, world.getLevel().getBoundingBox().width, world.getLevel().getBoundingBox().height);
+		camera.position.x = cameraCenter.x + GameRules.LEVEL_WIDTH/2 + MathUtils.random(-shakeAmount, shakeAmount);
+        camera.position.y = cameraCenter.y + GameRules.LEVEL_HEIGHT/2 + MathUtils.random(-shakeAmount, shakeAmount);
 
         /*if (animateCamera) {
             camY -= Gdx.graphics.getDeltaTime() * CAM_PPS;

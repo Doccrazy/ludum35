@@ -1,10 +1,13 @@
 package de.doccrazy.ld35.game.actor;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.ParticleEffectPool;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.CircleShape;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import de.doccrazy.ld35.core.Resource;
 import de.doccrazy.ld35.game.world.GameWorld;
@@ -42,7 +45,17 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
     }
 
     public void setupKeyboardControl() {
-        movement = new KeyboardMovementListener();
+        movement = new KeyboardMovementListener() {
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                if (Input.Keys.NUM_1 == keycode) {
+                    body.getFixtureList().get(0).getShape().setRadius(RADIUS/5f);
+                } else if (Input.Keys.NUM_2 == keycode) {
+                    body.getFixtureList().get(0).getShape().setRadius(RADIUS);
+                }
+                return super.keyDown(event, keycode);
+            }
+        };
         addListener((InputListener)movement);
     }
 

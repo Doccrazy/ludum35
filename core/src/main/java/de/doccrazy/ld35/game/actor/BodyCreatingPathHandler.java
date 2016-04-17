@@ -20,16 +20,19 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     private static final EarClippingTriangulator triangulator = new EarClippingTriangulator();
     private static final float[] vertTmp = new float[5000];
 
-    private final GameWorld world;
     private final AffineTransform transform;
     private Vector2 location, startPoint;
     private List<Vector2> polyPoints;
+    private BodyBuilder bodyBuilder;
 
-    public BodyCreatingPathHandler(GameWorld world, AffineTransform transform) {
-        this.world = world;
+    public BodyCreatingPathHandler(AffineTransform transform) {
         this.transform = transform;
         location = new Vector2();
         polyPoints = new ArrayList<>();
+    }
+
+    public BodyBuilder getBodyBuilder() {
+        return bodyBuilder;
     }
 
     @Override
@@ -38,6 +41,7 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
         polyPoints.clear();
         location.set(0, 0);
         startPoint = null;
+        bodyBuilder = null;
     }
 
     @Override
@@ -55,9 +59,8 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
             p.x = p.x - pos.x;
             p.y = p.y - pos.y;
         }
-        BodyBuilder bodyBuilder = BodyBuilder.forStatic(pos);
+        bodyBuilder = BodyBuilder.forStatic(pos);
         createPolygonShape(bodyBuilder);
-        bodyBuilder.build(world);
     }
 
     @Override

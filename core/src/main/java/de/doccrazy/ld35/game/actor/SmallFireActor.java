@@ -9,7 +9,7 @@ import de.doccrazy.ld35.game.world.GameWorld;
 import de.doccrazy.shared.game.actor.WorldActor;
 
 public class SmallFireActor extends WorldActor<GameWorld> {
-    private final ParticleEffectPool.PooledEffect fire = Resource.GFX.partFire.obtain();
+    private final ParticleEffectPool.PooledEffect fire = Resource.GFX.particles.get("fire").obtain();
 
     public SmallFireActor(GameWorld world, Vector2 spawn) {
         super(world);
