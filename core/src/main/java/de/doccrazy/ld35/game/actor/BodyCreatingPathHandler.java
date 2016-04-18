@@ -52,7 +52,7 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     public void closePath() throws ParseException {
         System.out.println("close");
         if (Math.abs(polyPoints.get(polyPoints.size()-1).x - startPoint.x) > 0.001f
-                && Math.abs(polyPoints.get(polyPoints.size()-1).y - startPoint.y) > 0.001f) {
+                || Math.abs(polyPoints.get(polyPoints.size()-1).y - startPoint.y) > 0.001f) {
             polyPoints.add(startPoint);
         }
         System.out.println("Position: " + origin);
@@ -143,6 +143,19 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
             Bezier.cubic(out, i/sd, pStart, p1, p2, pEnd, tmp);
             polyPoints.add(out);
         }
+    }
+
+    @Override
+    public void arcRel(float rx, float ry, float xAxisRotation, boolean largeArcFlag, boolean sweepFlag, float x, float y) throws ParseException {
+        System.out.println(String.format("arcRel(%f, %f, %f, %b, %b, %f, %f)", rx, ry, xAxisRotation, largeArcFlag, sweepFlag, x, y));
+        arcAbs(rx, ry, xAxisRotation, largeArcFlag, sweepFlag, location.x + x, location.y + y);
+    }
+
+    @Override
+    public void arcAbs(float rx, float ry, float xAxisRotation, boolean largeArcFlag, boolean sweepFlag, float x, float y) throws ParseException {
+        System.out.println(String.format("arcAbs(%f, %f, %f, %b, %b, %f, %f)", rx, ry, xAxisRotation, largeArcFlag, sweepFlag, x, y));
+        location.set(x, y);
+        polyPoints.add(transform(location));
     }
 
     private Vector2 transform(Vector2 org) {
