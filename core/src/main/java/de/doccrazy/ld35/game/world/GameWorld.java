@@ -5,6 +5,7 @@ import com.badlogic.gdx.math.Vector2;
 import de.doccrazy.ld35.core.Resource;
 import de.doccrazy.ld35.data.GameRules;
 import de.doccrazy.ld35.game.actor.*;
+import de.doccrazy.shared.game.actor.ParticleActor;
 import de.doccrazy.shared.game.actor.WorldActor;
 import de.doccrazy.shared.game.world.Box2dWorld;
 import de.doccrazy.shared.game.world.GameState;
@@ -15,20 +16,16 @@ import java.util.function.Function;
 
 public class GameWorld extends Box2dWorld<GameWorld> {
 
-    private final Function<GameWorld, Level>[] levels;
     private int currentLevel = 0;
     private PlayerActor player;
 	private boolean waitingForRound, gameOver;
 	private int round;
     private Vector2 mouseTarget;
     private Level level;
+    private Function<GameWorld, Level> levelFactory;
 
-	public GameWorld(Function<GameWorld, Level>... levels) {
+    public GameWorld() {
         super(GameRules.GRAVITY);
-        if (levels.length == 0) {
-            throw new IllegalArgumentException("No levels");
-        }
-        this.levels = levels;
         RayHandler.useDiffuseLight(true);
         //transition(GameState.PRE_GAME);
     }
@@ -38,12 +35,12 @@ public class GameWorld extends Box2dWorld<GameWorld> {
         switch (newState) {
             case INIT:
             	waitingForRound = false;
-                level = levels[currentLevel].apply(this);
-
-                addActor(level);
-                addActor(player = new PlayerActor(this, level.getSpawn()));
                 break;
             case PRE_GAME:
+                level = levelFactory.apply(this);
+                addActor(level);
+                addActor(player = new PlayerActor(this, level.getSpawn()));
+                addActor(new ParticleActor(this));
             	round++;
                 break;
             case GAME:
@@ -51,11 +48,7 @@ public class GameWorld extends Box2dWorld<GameWorld> {
                 stage.setKeyboardFocus(player);
                 break;
             case VICTORY:
-                if (currentLevel + 1 < levels.length) {
-                    currentLevel++;
-                } else {
-                    gameOver = true;
-                }
+                gameOver = true;
             case DEFEAT:
             	//for (Music m : Resource.MUSIC.fight) {
             	//	m.stop();
@@ -128,13 +121,15 @@ public class GameWorld extends Box2dWorld<GameWorld> {
     }
 
     public float getRemainingTime() {
+        if (level == null) {
+            return 0;
+        }
         return Math.max(0, level.getTime() - (isGameFinished() ? getLastStateTime() : getStateTime()));
     }
 
-    public void advanceLevel() {
-        if (currentLevel + 1 < levels.length) {
-            currentLevel++;
-        }
+    public void setLevel(Function<GameWorld, Level> level) {
+        this.levelFactory = level;
+        transition(GameState.PRE_GAME);
     }
 
     public void resetAll() {

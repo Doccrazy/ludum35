@@ -91,6 +91,9 @@ public class SVGLevelActor extends Level {
         processRectByPrefix(metaLayer, metaTransform, "kill", (s, rect) -> {
             world.addActor(new KillboxActor(world, rect));
         });
+        processRectByPrefix(metaLayer, metaTransform, "win", (s, rect) -> {
+            world.addActor(new WinboxActor(world, rect));
+        });
         processCircleByPrefix(metaLayer, metaTransform, "light", (s, circle, color) -> {
             PointLight light = new PointLight(world.rayHandler, 10, color, circle.radius*2f, circle.x, circle.y);
             light.setXray(true);

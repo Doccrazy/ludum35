@@ -8,4 +8,5 @@ public class FontResources extends ResourcesBase {
     public BitmapFont retro = bitmapFont("retro");
     public BitmapFont retroBig = bitmapFont("retro-big");
     public BitmapFont retroSmall = bitmapFont("retro-small");
+    public BitmapFont menu = bitmapFont("menu");
 }

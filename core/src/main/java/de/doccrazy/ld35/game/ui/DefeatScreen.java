@@ -30,7 +30,7 @@ public class DefeatScreen extends Widget {
     public void draw(Batch batch, float parentAlpha) {
         super.draw(batch, parentAlpha);
         batch.setColor(1, 1, 1, Math.min(stateTime/4f, 1f));
-        //batch.draw(Resource.GFX.defeat, getX(), getY(), getWidth(), getHeight());
+        batch.draw(Resource.GFX.defeat, getX(), getY(), getWidth(), getHeight());
         batch.setColor(1, 1, 1, 1);
     }
 }

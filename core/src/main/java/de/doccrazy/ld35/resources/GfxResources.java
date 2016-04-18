@@ -2,6 +2,7 @@ package de.doccrazy.ld35.resources;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.NinePatch;
 import com.badlogic.gdx.graphics.g2d.ParticleEffectPool;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -13,12 +14,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class GfxResources extends ResourcesBase {
-    /*public TextureRegion introFull = new TextureRegion(texture("intro-full.png"));
-    public TextureRegion introSplash = new TextureRegion(texture("intro2.png"));
-    public TextureRegion intermezzo = new TextureRegion(texture("intermezzo.png"));
+    public TextureRegion introFull = new TextureRegion(texture("intro-full.png"));
+    public TextureRegion victory = new TextureRegion(texture("victory.png"));
+    /*public TextureRegion intermezzo = new TextureRegion(texture("intermezzo.png"));
     public TextureRegion continueTx = new TextureRegion(texture("continue.png"));
-    public TextureRegion thanksTx = new TextureRegion(texture("thanks.png"));
-    public TextureRegion defeat = new TextureRegion(texture("defeat.png"));*/
+    public TextureRegion thanksTx = new TextureRegion(texture("thanks.png"));*/
+    public TextureRegion defeat = new TextureRegion(texture("defeat.png"));
+
+    public NinePatch button = new NinePatch(texture("button.png"), 12, 12, 12, 12);
 
     public Sprite[] player = new Sprite[]{atlas.createSprite("player_walk"), atlas.createSprite("player_roll"), atlas.createSprite("player_fly")};
     public Sprite[] blood = new Sprite[]{atlas.createSprite("blood1"), atlas.createSprite("blood2"), atlas.createSprite("blood3"), atlas.createSprite("blood4")};
@@ -26,6 +29,7 @@ public class GfxResources extends ResourcesBase {
     public Map<String, ParticleEffectPool> particles = new HashMap<String, ParticleEffectPool>() {{
         put("fire", particle("fire.p", 0.01f));
         put("smoke", particle("smoke.p", 0.01f));
+        put("explosion", particle("explosion.p", 0.02f));
     }};
 
     public XmlReader.Element level1 = xml("level.svg");

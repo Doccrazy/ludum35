@@ -7,12 +7,14 @@ import de.doccrazy.ld35.game.world.GameWorld;
 import de.doccrazy.shared.game.actor.ShapeActor;
 import de.doccrazy.shared.game.base.CollisionListener;
 import de.doccrazy.shared.game.world.BodyBuilder;
+import de.doccrazy.shared.game.world.GameState;
 import de.doccrazy.shared.game.world.ShapeBuilder;
 
-public class KillboxActor extends ShapeActor<GameWorld> implements CollisionListener {
+public class WinboxActor extends ShapeActor<GameWorld> implements CollisionListener {
     private final Rectangle rect;
+    private float hitTime = 9999999f;
 
-    public KillboxActor(GameWorld world, Rectangle rect) {
+    public WinboxActor(GameWorld world, Rectangle rect) {
         super(world, Vector2.Zero, false);
         this.rect = rect;
     }
@@ -26,15 +28,26 @@ public class KillboxActor extends ShapeActor<GameWorld> implements CollisionList
     }
 
     @Override
+    protected void doAct(float delta) {
+        if (stateTime - hitTime > 1f) {
+            world.transition(GameState.VICTORY);
+        }
+        super.doAct(delta);
+    }
+
+    @Override
     public boolean beginContact(Body me, Body other, Vector2 normal, Vector2 contactPoint) {
         if (other.getUserData() == world.getPlayer()) {
-            world.getPlayer().damage(1f);
+            hitTime = stateTime;
         }
         return false;
     }
 
     @Override
     public void endContact(Body other) {
+        if (other.getUserData() == world.getPlayer()) {
+            hitTime = 9999999f;
+        }
     }
 
     @Override

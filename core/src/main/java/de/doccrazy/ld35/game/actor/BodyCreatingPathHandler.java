@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BodyCreatingPathHandler extends DefaultPathHandler {
-    private static final float SUBDIVS = 20f;
+    private static final float SUBDIVS = 4f;
 
     private final AffineTransform transform;
     private Vector2 location, origin, startPoint;
@@ -128,19 +128,21 @@ public class BodyCreatingPathHandler extends DefaultPathHandler {
     }
 
     private void cubicCurve(Vector2 rel, float x1, float y1, float x2, float y2, float x, float y) {
-        Vector2 p1 = new Vector2(rel.x + x1, rel.y + y1);
-        Vector2 p2 = new Vector2(rel.x + x2, rel.y + y2);
-        Vector2 pEnd = new Vector2(rel.x + x, rel.y + y);
-        float len = pEnd.dst(location) + location.dst(p1) + pEnd.dst(p2);
-        Vector2 out = new Vector2();
+        Vector2 pStart = transform(location);
+        Vector2 p1 = transform(new Vector2(rel.x + x1, rel.y + y1));
+        Vector2 p2 = transform(new Vector2(rel.x + x2, rel.y + y2));
+        Vector2 pEnd = transform(new Vector2(rel.x + x, rel.y + y));
+        location.set(rel.x + x, rel.y + y);
+
+        float len = pEnd.dst(pStart) + pStart.dst(p1) + pEnd.dst(p2);
         Vector2 tmp = new Vector2();
-        float sd = (int) (SUBDIVS * (len/100f));
+        float sd = (int) (SUBDIVS * len);
         //System.out.println("subdivs " + sd);
         for (int i = 1; i <= sd; i++) {
-            Bezier.cubic(out, i/sd, location, p1, p2, pEnd, tmp);
-            polyPoints.add(transform(out));
+            Vector2 out = new Vector2();
+            Bezier.cubic(out, i/sd, pStart, p1, p2, pEnd, tmp);
+            polyPoints.add(out);
         }
-        location.set(pEnd.x, pEnd.y);
     }
 
     private Vector2 transform(Vector2 org) {

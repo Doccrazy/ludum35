@@ -13,11 +13,14 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import de.doccrazy.ld35.core.Resource;
 import de.doccrazy.ld35.game.world.GameWorld;
+import de.doccrazy.shared.game.actor.ParticleActor;
+import de.doccrazy.shared.game.actor.ParticleEvent;
 import de.doccrazy.shared.game.actor.ShapeActor;
 import de.doccrazy.shared.game.base.CollisionListener;
 import de.doccrazy.shared.game.base.KeyboardMovementListener;
 import de.doccrazy.shared.game.base.MovementInputListener;
 import de.doccrazy.shared.game.world.BodyBuilder;
+import de.doccrazy.shared.game.world.GameState;
 import de.doccrazy.shared.game.world.ShapeBuilder;
 
 import java.util.HashMap;
@@ -133,7 +136,7 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
     @Override
     protected void doAct(float delta) {
         processContacts();
-        if (movement != null) {
+        if (movement != null && world.getGameState() == GameState.GAME) {
             move(delta);
         } else {
             body.setAngularVelocity(0);
@@ -215,7 +218,7 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
             if (Math.abs(body.getAngularVelocity()) < V_MAX_ROLL) {
                 body.applyTorque(-mv.x * TORQUE, true);
             }
-            if (Math.abs(v.x) < 0.1f) {
+            if (v.len() < 0.1f) {
                 body.setAngularVelocity(-mv.x*VELOCITY*0.5f);
             }
         } else if (shapeState == 2) {
@@ -258,5 +261,10 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
     @Override
     public void hit(float force) {
 
+    }
+
+    public void damage(float amount) {
+        world.postEvent(new ParticleEvent(body.getPosition().x, body.getPosition().y, Resource.GFX.particles.get("explosion")));
+        kill();
     }
 }

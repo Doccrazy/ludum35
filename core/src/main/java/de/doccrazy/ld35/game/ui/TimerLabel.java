@@ -22,7 +22,7 @@ public class TimerLabel extends Label {
 		super.act(delta);
         setVisible(world.getGameState() == GameState.GAME || world.isGameFinished());
 
-		//setText("Time: " + (int)(world.getRemainingTime()));
+		setText("Time: " + (int)(world.getRemainingTime()));
 	}
 
 }

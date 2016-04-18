@@ -16,6 +16,7 @@ import de.doccrazy.ld35.game.actor.PlayerActor;
 import de.doccrazy.ld35.game.world.GameWorld;
 import de.doccrazy.ld35.game.world.ScreenShakeEvent;
 import de.doccrazy.shared.game.BaseGameRenderer;
+import de.doccrazy.shared.game.world.GameState;
 import net.dermetfan.gdx.math.GeometryUtils;
 
 public class GameRenderer extends BaseGameRenderer<GameWorld> {
@@ -53,11 +54,13 @@ public class GameRenderer extends BaseGameRenderer<GameWorld> {
 
 	    //zoom = MathUtils.clamp(zoom + zoomDelta*0.02f, 1f, 2f);
 
-		Vector2 cameraCenter = GeometryUtils.keepWithin(new Vector2(world.getPlayer().getX() - GameRules.LEVEL_WIDTH/2f, world.getPlayer().getY() - GameRules.LEVEL_HEIGHT/2f),
-				GameRules.LEVEL_WIDTH, GameRules.LEVEL_HEIGHT,
-				0, 0, world.getLevel().getBoundingBox().width, world.getLevel().getBoundingBox().height);
-		camera.position.x = cameraCenter.x + GameRules.LEVEL_WIDTH/2f + MathUtils.random(-shakeAmount, shakeAmount);
-        camera.position.y = cameraCenter.y + GameRules.LEVEL_HEIGHT/2f + MathUtils.random(-shakeAmount, shakeAmount);
+        if (world.getGameState() != GameState.INIT) {
+            Vector2 cameraCenter = GeometryUtils.keepWithin(new Vector2(world.getPlayer().getX() - GameRules.LEVEL_WIDTH / 2f, world.getPlayer().getY() - GameRules.LEVEL_HEIGHT / 2f),
+                    GameRules.LEVEL_WIDTH, GameRules.LEVEL_HEIGHT,
+                    0, 0, world.getLevel().getBoundingBox().width, world.getLevel().getBoundingBox().height);
+            camera.position.x = cameraCenter.x + GameRules.LEVEL_WIDTH / 2f + MathUtils.random(-shakeAmount, shakeAmount);
+            camera.position.y = cameraCenter.y + GameRules.LEVEL_HEIGHT / 2f + MathUtils.random(-shakeAmount, shakeAmount);
+        }
 
         /*if (animateCamera) {
             camY -= Gdx.graphics.getDeltaTime() * CAM_PPS;
