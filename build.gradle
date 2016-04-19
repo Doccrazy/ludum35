@@ -41,7 +41,6 @@ boolean hasLocalLudumShared = subprojects.find { it.path == ':ludum-shared' } !=
 project(":core") {
     dependencies {
         compile hasLocalLudumShared ? project(':ludum-shared') : "de.doccrazy:ludum-shared:$ludumSharedVersion"
-        compile 'org.apache.xmlgraphics:batik-parser:1.8'
     }
 }
 
