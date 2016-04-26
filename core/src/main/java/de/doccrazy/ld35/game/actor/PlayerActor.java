@@ -6,29 +6,20 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.ParticleEffectPool;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.BodyDef;
-import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import de.doccrazy.ld35.core.Resource;
 import de.doccrazy.ld35.game.world.GameWorld;
-import de.doccrazy.shared.game.actor.ParticleActor;
+import de.doccrazy.shared.game.actor.GroundContactAction;
 import de.doccrazy.shared.game.actor.ParticleEvent;
 import de.doccrazy.shared.game.actor.ShapeActor;
-import de.doccrazy.shared.game.base.CollisionListener;
 import de.doccrazy.shared.game.base.KeyboardMovementListener;
 import de.doccrazy.shared.game.base.MovementInputListener;
 import de.doccrazy.shared.game.world.BodyBuilder;
 import de.doccrazy.shared.game.world.GameState;
 import de.doccrazy.shared.game.world.ShapeBuilder;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListener {
-    private static final float CONTACT_TTL = 0.2f;
+public class PlayerActor extends ShapeActor<GameWorld> {
     private static final float RADIUS = 0.5f;
     private static final float VELOCITY = 5f;
     private static final float TORQUE = 2f;
@@ -40,16 +31,16 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
     public static final float GLIDE_V_SCALE = 0.01f;
 
     private MovementInputListener movement;
+    private final GroundContactAction groundContact;
     private boolean moving;
     private float orientation = 1;
     private int shapeState;
     private float lastJump = 0;
-    private boolean touchingFloor, touchingLeftWall, touchingRightWall;
-    private float lastFloorContact, lastLeftWallContact, lastRightWallContact;
 
     public PlayerActor(GameWorld world, Vector2 spawn) {
         super(world, spawn, false);
         setzOrder(50);
+        addAction(groundContact = new GroundContactAction());
         //setScaleX(Resource.GFX.mower.getWidth() / Resource.GFX.mower.getHeight());
     }
 
@@ -135,7 +126,6 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
 
     @Override
     protected void doAct(float delta) {
-        processContacts();
         if (movement != null && world.getGameState() == GameState.GAME) {
             move(delta);
         } else {
@@ -145,39 +135,6 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
             kill();
         }
         super.doAct(delta);
-    }
-
-    private void processContacts() {
-        for (Contact contact : world.box2dWorld.getContactList()) {
-            Body a = contact.getFixtureA().getBody();
-            Body b = contact.getFixtureB().getBody();
-            Body other = a.getUserData() == this ? b : (b.getUserData() == this ? a : null);
-            if (other == null) {
-                continue;
-            }
-
-            Vector2 normal = contact.getWorldManifold().getNormal();
-            if (other.getType() == BodyDef.BodyType.StaticBody && contact.isTouching() && normal.y > 0.707f) {  //45°
-                touchingFloor = true;
-                lastFloorContact = stateTime;
-            } else if (other.getType() == BodyDef.BodyType.StaticBody && contact.isTouching() && normal.x > 0.866f) {  //60°
-                touchingLeftWall = true;
-                lastLeftWallContact = stateTime;
-            } else if (other.getType() == BodyDef.BodyType.StaticBody && contact.isTouching() && normal.x < -0.866f) {  //60°
-                touchingRightWall = true;
-                lastRightWallContact = stateTime;
-            }
-        }
-        if (stateTime - lastFloorContact > CONTACT_TTL) {
-            touchingFloor = false;
-        }
-        if (stateTime - lastLeftWallContact > CONTACT_TTL) {
-            touchingLeftWall = false;
-        }
-        if (stateTime - lastRightWallContact > CONTACT_TTL) {
-            touchingRightWall = false;
-        }
-        //System.out.println("Floor: " + touchingFloor + ", wallLeft: " + touchingLeftWall + ", wallRight: " + touchingRightWall);
     }
 
     private void move(float delta) {
@@ -191,7 +148,7 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
         if (shapeState == 0) {
             if (mv.x == 0 || Math.signum(mv.x) == Math.signum(orientation)) {
                 //System.out.println(touchingFloor());
-                if (touchingFloor) {
+                if (groundContact.isTouchingFloor()) {
                     body.setAngularVelocity(-mv.x*VELOCITY);
                 } else {
                     if (Math.abs(v.x) < V_MAX_AIRCONTROL) {
@@ -200,15 +157,15 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
                 }
             }
             boolean jump = movement.pollJump();
-            if (stateTime - lastJump > CONTACT_TTL && jump) {
-                if (touchingFloor) {
+            if (stateTime - lastJump > GroundContactAction.FLOOR_CONTACT_TTL && jump) {
+                if (groundContact.isTouchingFloor()) {
                     addImpulse(0f, JUMP_IMPULSE);
                     lastJump = stateTime;
                     //Resource.jump.play();
-                } else if (touchingLeftWall && mv.x > 0) {
+                } else if (groundContact.isTouchingLeftWall() && mv.x > 0) {
                     body.applyLinearImpulse(JUMP_IMPULSE/3f, JUMP_IMPULSE, body.getPosition().x, body.getPosition().y, true);
                     lastJump = stateTime;
-                } else if (touchingRightWall && mv.x < 0) {
+                } else if (groundContact.isTouchingRightWall() && mv.x < 0) {
                     body.applyLinearImpulse(-JUMP_IMPULSE/3f, JUMP_IMPULSE, body.getPosition().x, body.getPosition().y, true);
                     lastJump = stateTime;
                 }
@@ -247,20 +204,6 @@ public class PlayerActor extends ShapeActor<GameWorld> implements CollisionListe
         effect.getEmitters().first().getAngle().setHigh(190 + r, 170 + r);
         effect.update(Gdx.graphics.getDeltaTime());
         effect.draw(batch);
-    }
-
-    @Override
-    public boolean beginContact(Body me, Body other, Vector2 normal, Vector2 contactPoint) {
-        return true;
-    }
-
-    @Override
-    public void endContact(Body other) {
-    }
-
-    @Override
-    public void hit(float force) {
-
     }
 
     public void damage(float amount) {
