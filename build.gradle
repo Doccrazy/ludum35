@@ -9,8 +9,8 @@ allprojects {
     version = '1.0'
     ext {
         appName = 'ludum35'
-        gdxVersion = '1.9.2'
-        ludumSharedVersion = '1.3-SNAPSHOT'
+        gdxVersion = '1.9.4'
+        ludumSharedVersion = '1.4-SNAPSHOT'
     }
 
     configurations.all {
@@ -21,6 +21,7 @@ allprojects {
         mavenCentral()
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
         maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+        maven { url 'https://raw.github.com/Trixt0r/spriter/mvn/' }
         mavenLocal()
     }
 }
